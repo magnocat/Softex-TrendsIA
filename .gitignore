@@ -9,10 +9,14 @@ __pycache__/
 *$py.class
 *.so
 
-# Variáveis de ambiente e segredos (OBRIGATÓRIO)
+# Variáveis de ambiente e segredos locais (OBRIGATÓRIO)
 .env
 .env.local
+p0/.env
 
-# IDEs
+# IDEs e configurações locais
 .vscode/
 .idea/
+
+# Scripts utilitários locais
+push.sh
