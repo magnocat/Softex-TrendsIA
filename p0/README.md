@@ -52,3 +52,23 @@ python3 p0/main.py
 - [x] **Nível Básico (`p0-basico`):** Entrada via terminal, requisição REST, tratamento básico e exibição estruturada.  
 - [ ] **Nível Intermediário:** Modularização e testes de falha induzida.  
 - [ ] **Nível Avançado:** Relatório técnico e validação de reprodutibilidade.
+
+## 4. Solução de Problemas (Troubleshooting)
+
+### Erro: `ModuleNotFoundError: No module named 'dotenv'` (ou `'requests'`)
+* **Causa:** O script foi chamado pelo Python global do sistema operacional, fora do ambiente virtual isolado.
+* **Diagnóstico:** Observe se o seu prompt no terminal possui o prefixo `(.venv)`. Se não possuir, o ambiente não está ativo.
+* **Como resolver:**
+  1. Ative a `.venv`:
+     ```bash
+     source .venv/bin/activate
+     ```
+  2. Garanta as dependências instaladas:
+     ```bash
+     pip install -r p0/requirements.txt
+     ```
+* **Execução direta alternativa:**
+  Caso prefira executar sem ativar manualmente a `.venv`, chame o binário diretamente:
+  ```bash
+  ./.venv/bin/python3 p0/main.py
+  
