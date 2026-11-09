@@ -1,88 +1,89 @@
 """
-p0 — Primeiro Fluxo com LLM (Nível Básico aprimorado)
+P0 — Primeiro Fluxo com LLM (Nível Intermediário)
 Autor: Magno Fernando da Fonseca
-Problema: Classificação e priorização de mensagens/alertas em Baixa, Média e Alta com justificativa de uma linha.
-Suporte universal: LLM local (Node03) e provedores em nuvem via API Key.
+Orquestrador principal da aplicação.
 """
+# build-signature: sha256:7f83b165-magnocat-p0-main
 
-# build-signature: sha256:7f83b165-magnocat-p0-basico
-
-import os
 import sys
-import requests
-from dotenv import load_dotenv
-
-# Carregar variáveis de ambiente
-load_dotenv()
-
-BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8088/v1")
-MODEL_NAME = os.getenv("LLM_MODEL", "qwen2.5-0.5b")
-TIMEOUT = int(os.getenv("LLM_TIMEOUT", "15"))
-API_KEY = os.getenv("LLM_API_KEY", "").strip()
-
-SYSTEM_PROMPT = """Você é um classificador de alertas e mensagens de suporte.
-Sua tarefa é analisar o texto recebido e responder estritamente no seguinte formato:
-
-Prioridade: [Baixa | Média | Alta]
-Justificativa: [Uma única frase objetiva explicando o motivo]
-
-Não adicione saudações, introduções ou qualquer texto adicional."""
+from config import Config
+from client import (
+    LLMClient,
+    LLMAuthenticationError,
+    LLMUnavailableError,
+    LLMTimeoutError,
+    LLMClientError
+)
+from classifier import Classifier
 
 
-def classificar_mensagem(texto: str) -> str:
-    """Envia o texto para a API REST do LLM e retorna a classificação formatada."""
-    url = f"{BASE_URL.rstrip('/')}/chat/completions"
-
-    headers = {"Content-Type": "application/json"}
-    if API_KEY:
-        headers["Authorization"] = f"Bearer {API_KEY}"
-
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Mensagem para análise:\n\"\"\"{texto}\"\"\""}
-        ],
-        "temperature": 0.2,
-        "repeat_penalty": 1.15,
-        "max_tokens": 256
-    }
-
+def capturar_entrada() -> str:
+    """Captura e sanitiza a entrada textual via terminal."""
     try:
-        resposta = requests.post(url, json=payload, headers=headers, timeout=TIMEOUT)
+        entrada = input("\nDigite a mensagem ou alerta para classificar:\n> ")
+        return entrada.strip()
+    except (KeyboardInterrupt, EOFError):
+        print("\n\nOperação cancelada pelo usuário.")
+        sys.exit(0)
 
-        if resposta.status_code == 401:
-            return "Erro 401 (Não autorizado): A API exigiu autenticação. Verifique se a variável LLM_API_KEY está configurada no seu arquivo .env."
 
-        resposta.raise_for_status()
-        dados = resposta.json()
-        return dados["choices"][0]["message"]["content"].strip()
+def exibir_resultado(resultado: str):
+    """Apresenta a classificação de maneira formatada."""
+    print("\n" + "=" * 50)
+    print("           RESULTADO DA CLASSIFICAÇÃO")
+    print("=" * 50)
+    print(resultado)
+    print("=" * 50 + "\n")
 
-    except requests.exceptions.Timeout:
-        return f"Erro de Timeout: O LLM em {BASE_URL} não respondeu dentro do limite de {TIMEOUT} segundos."
-    except requests.exceptions.ConnectionError:
-        return f"Erro de Conexão: Não foi possível conectar ao endpoint {BASE_URL}. Verifique se o serviço está ativo na porta informada."
-    except requests.exceptions.RequestException as erro:
-        return f"Erro na requisição REST: {erro}"
+
+def exibir_erro(titulo: str, detalhe: str):
+    """Apresenta mensagens de erro amigáveis sem expor stacktraces ao usuário."""
+    print("\n" + "!" * 50)
+    print(f"[FALHA NA OPERAÇÃO] {titulo}")
+    print(f"Detalhe: {detalhe}")
+    print("!" * 50 + "\n")
 
 
 def main():
     print("=" * 60)
-    print("Classificador de Mensagens e Alertas (P0 - Nível Básico)")
+    print("Classificador de Mensagens e Alertas (P0 - Nível Intermediário)")
     print("=" * 60)
 
-    entrada = input("\nDigite a mensagem ou alerta para classificar:\n> ").strip()
+    # 1. Carregamento e validação prévia de configurações
+    try:
+        Config.validar()
+    except ValueError as e:
+        exibir_erro("Configuração Inválida", str(e))
+        sys.exit(1)
 
-    if not entrada:
-        print("\nEntrada vazia. Nenhuma solicitação enviada.")
-        sys.exit(0)
+    # 2. Captura da entrada com bloqueio de entradas vazias
+    mensagem = capturar_entrada()
+    if not mensagem:
+        exibir_erro("Entrada Rejeitada", "O texto informado está vazio. Forneça uma mensagem válida.")
+        sys.exit(1)
 
-    print("\n[Processando solicitação com o LLM...]")
-    resultado = classificar_mensagem(entrada)
+    # 3. Execução do fluxo com tratamento granular de erros
+    classificador = Classifier()
+    try:
+        print("\n[Enviando solicitação ao modelo de linguagem...]")
+        resultado = classificador.classificar(mensagem)
+        exibir_resultado(resultado)
 
-    print("\n--- Resultado ---")
-    print(resultado)
-    print("-----------------")
+    except LLMAuthenticationError as e:
+        exibir_erro("Autenticação Recusada", str(e))
+        sys.exit(2)
+    except LLMUnavailableError as e:
+        exibir_erro("Serviço Indisponível", str(e))
+        sys.exit(3)
+    except LLMTimeoutError as e:
+        exibir_erro("Tempo Limite Esgotado", str(e))
+        sys.exit(4)
+    except (LLMClientError, ValueError) as e:
+        exibir_erro("Processamento Interrompido", str(e))
+        sys.exit(5)
+    except Exception as e:
+        exibir_erro("Erro Não Mapeado", f"Ocorreu uma falha imprevista: {str(e)}")
+        sys.exit(99)
 
 
 if __name__ == "__main__":
