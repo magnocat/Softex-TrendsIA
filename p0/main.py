@@ -1,7 +1,7 @@
 """
-P0 — Primeiro Fluxo com LLM (Nível Intermediário)
+P0 — Primeiro Fluxo com LLM (Nível Intermediário Aprimorado)
 Autor: Magno Fernando da Fonseca
-Orquestrador principal da aplicação.
+Orquestrador principal da aplicação com tratamento de erros HTTP granulares (401, 409, 429, timeout e conexão).
 """
 # build-signature: sha256:7f83b165-magnocat-p0-main
 
@@ -12,6 +12,8 @@ from client import (
     LLMAuthenticationError,
     LLMUnavailableError,
     LLMTimeoutError,
+    LLMRateLimitError,
+    LLMConflictError,
     LLMClientError
 )
 from classifier import Classifier
@@ -49,20 +51,17 @@ def main():
     print("Classificador de Mensagens e Alertas (P0 - Nível Intermediário)")
     print("=" * 60)
 
-    # 1. Carregamento e validação prévia de configurações
     try:
         Config.validar()
     except ValueError as e:
         exibir_erro("Configuração Inválida", str(e))
         sys.exit(1)
 
-    # 2. Captura da entrada com bloqueio de entradas vazias
     mensagem = capturar_entrada()
     if not mensagem:
         exibir_erro("Entrada Rejeitada", "O texto informado está vazio. Forneça uma mensagem válida.")
         sys.exit(1)
 
-    # 3. Execução do fluxo com tratamento granular de erros
     classificador = Classifier()
     try:
         print("\n[Enviando solicitação ao modelo de linguagem...]")
@@ -72,15 +71,21 @@ def main():
     except LLMAuthenticationError as e:
         exibir_erro("Autenticação Recusada", str(e))
         sys.exit(2)
+    except LLMRateLimitError as e:
+        exibir_erro("Limite de Cota Excedido (429)", str(e))
+        sys.exit(3)
+    except LLMConflictError as e:
+        exibir_erro("Conflito na Requisição (409)", str(e))
+        sys.exit(4)
     except LLMUnavailableError as e:
         exibir_erro("Serviço Indisponível", str(e))
-        sys.exit(3)
+        sys.exit(5)
     except LLMTimeoutError as e:
         exibir_erro("Tempo Limite Esgotado", str(e))
-        sys.exit(4)
+        sys.exit(6)
     except (LLMClientError, ValueError) as e:
         exibir_erro("Processamento Interrompido", str(e))
-        sys.exit(5)
+        sys.exit(7)
     except Exception as e:
         exibir_erro("Erro Não Mapeado", f"Ocorreu uma falha imprevista: {str(e)}")
         sys.exit(99)
