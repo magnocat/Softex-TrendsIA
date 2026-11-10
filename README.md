@@ -12,7 +12,6 @@ Aplicação em Python modularizada, segura e reproduzível que consome uma API d
 
 * **Documentação Técnica:** [`p0/README.md`](./p0/README.md)  
 * **Relatório Oficial de Execução:** [`p0/RELATORIO_EXECUCAO.md`](./p0/RELATORIO_EXECUCAO.md)  
-* **Guia de Estudo e Arquitetura:** [`p0/GUIA_LEIGO.md`](./p0/GUIA_LEIGO.md)
 
 #### Marcos Históricos de Construção Incremental (Tags):
 
