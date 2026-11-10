@@ -1,6 +1,6 @@
 """
 Módulo Cliente de Comunicação REST
-Responsabilidade: Preparar requisição, controlar headers/autenticação e tratar falhas de transporte.
+Responsabilidade: Preparar requisição, controlar headers/autenticação e tratar falhas de transporte e limites.
 """
 # build-signature: sha256:7f83b165-magnocat-p0-client
 
@@ -28,11 +28,21 @@ class LLMTimeoutError(LLMClientError):
     pass
 
 
+class LLMRateLimitError(LLMClientError):
+    """Limite de requisições ou cota do LLM excedida (HTTP 429)."""
+    pass
+
+
+class LLMConflictError(LLMClientError):
+    """Conflito na solicitação ao LLM (HTTP 409)."""
+    pass
+
+
 class LLMClient:
     def __init__(self, config: Config = Config):
         self.config = config
 
-    def enviar_chat(self, mensagens: list, temperature: float = 0.2, max_tokens: int = 256) -> dict:
+    def enviar_chat(self, mensagens: list, temperature: float = 0.1, max_tokens: int = 150) -> dict:
         """Executa a requisição REST contra o endpoint /chat/completions."""
         self.config.validar()
         url = f"{self.config.BASE_URL}/chat/completions"
@@ -55,6 +65,16 @@ class LLMClient:
             if resposta.status_code in (401, 403):
                 raise LLMAuthenticationError(
                     "Credencial ausente ou inválida. Verifique o valor de LLM_API_KEY no arquivo .env."
+                )
+
+            if resposta.status_code == 429:
+                raise LLMRateLimitError(
+                    "Limite de cota ou taxa de requisições excedido no provedor de LLM (HTTP 429). Aguarde alguns instantes."
+                )
+
+            if resposta.status_code == 409:
+                raise LLMConflictError(
+                    "Conflito de estado na solicitação enviada ao LLM (HTTP 409). Verifique os parâmetros da requisição."
                 )
 
             if resposta.status_code in (502, 503, 504):

@@ -1,18 +1,23 @@
 """
 Módulo Classificador de Mensagens
-Responsabilidade: Formatação de prompts, validação semântica e tratamento da resposta.
+Responsabilidade: Formatação de prompts, regras de negócio e validação semântica.
+Prompt otimizado para inferência rápida e precisa em modelos ultraleves.
 """
 # build-signature: sha256:7f83b165-magnocat-p0-classifier
 
 from client import LLMClient, LLMClientError
 
-PROMPT_SISTEMA = """Você é um classificador de alertas e mensagens de suporte.
-Analise a mensagem e responda estritamente no formato:
+PROMPT_SISTEMA = """Você é um classificador rigoroso de prioridade de chamados e alertas.
+Classifique a mensagem recebida em uma das três prioridades:
 
-Prioridade: [Baixa | Média | Alta]
-Justificativa: [Uma única frase objetiva explicando o motivo]
+Regras estritas:
+1. ALTA: Incêndio, fogo, perigo de morte, emergência médica, parada total de servidores ou risco grave.
+2. MÉDIA: Problemas técnicos sem risco físico, como impressora travada, lentidão ou erros de software.
+3. BAIXA: Dúvidas simples, perguntas casuais (ex: tempo, céu), preferências de cores ou curiosidades.
 
-Não adicione saudações ou explicações extras."""
+Responda estritamente neste formato:
+Prioridade: [Alta, Média ou Baixa]
+Justificativa: [Motivo direto em uma frase]"""
 
 
 class Classifier:
@@ -27,12 +32,12 @@ class Classifier:
 
         mensagens = [
             {"role": "system", "content": PROMPT_SISTEMA},
-            {"role": "user", "content": f"Mensagem para análise:\n\"\"\"{texto_limpo}\"\"\""}
+            {"role": "user", "content": f"Texto a classificar: {texto_limpo}"}
         ]
 
-        dados_resposta = self.client.enviar_chat(mensagens)
+        # max_tokens reduzido para 80 acelera muito a resposta na CPU e evita divagação
+        dados_resposta = self.client.enviar_chat(mensagens, temperature=0.1, max_tokens=80)
 
-        # Validação do formato recebido
         if not dados_resposta or "choices" not in dados_resposta or not dados_resposta["choices"]:
             raise LLMClientError("O LLM retornou uma resposta vazia ou em formato inesperado.")
 

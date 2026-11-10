@@ -7,14 +7,13 @@ Responsabilidade: Carregar e validar estritamente as variáveis de ambiente sem 
 import os
 from dotenv import load_dotenv
 
-# Carrega o arquivo .env
 load_dotenv()
 
 
 class Config:
     BASE_URL = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
     MODEL_NAME = os.getenv("LLM_MODEL", "").strip()
-    TIMEOUT = int(os.getenv("LLM_TIMEOUT", "15"))
+    TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))
     API_KEY = os.getenv("LLM_API_KEY", "").strip()
 
     @classmethod
@@ -36,4 +35,3 @@ class Config:
             )
         if cls.TIMEOUT <= 0:
             raise ValueError("A variável LLM_TIMEOUT deve ser um número inteiro positivo.")
-
