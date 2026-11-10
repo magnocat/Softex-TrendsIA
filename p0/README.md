@@ -1,4 +1,4 @@
-# P0 — Primeiro Fluxo com LLM (Nível Intermediário)
+# P0 — Primeiro Fluxo com LLM (Nível Avançado)
 
 Projeto individual desenvolvido por mim na trilha de Inteligência Artificial da Softex Campinas.
 
@@ -10,51 +10,70 @@ Projeto individual desenvolvido por mim na trilha de Inteligência Artificial da
 * **Quem possui essa necessidade:** Operadores de suporte, equipes de infraestrutura e administradores de sistemas que recebem volumosas notificações desestruturadas e precisam triar incidentes críticos com agilidade.  
 * **Por que usar LLM:** Um modelo de linguagem consegue captar nuances semânticas e severidade operacional, padronizando a resposta em formato acionável.
 
-## 2\. Arquitetura e Modularização (Nível Intermediário)
+## 2\. Tecnologias e Ambiente
 
-O código foi refatorado para garantir a separação estrita de responsabilidades:
+* **Linguagem:** Python 3.10+ (desenvolvido e testado em Python 3.13 no Debian 13 x86\_64)  
+* **Bibliotecas Principais:**  
+  - `requests >= 2.31.0`: Comunicação HTTP REST com a API do LLM.  
+  - `python-dotenv >= 1.0.0`: Carregamento isolado de variáveis de ambiente do arquivo `.env`.  
+  - `unittest` (biblioteca padrão): Suíte automatizada de testes locais, mocks e integração real.  
+  - `logging` (biblioteca padrão): Registro de auditoria operacional em arquivo local (`p0/app.log`).
 
-* p0/config.py: Carregamento e validação de configurações e variáveis de ambiente.  
-* p0/client.py: Preparação de payloads, controle de autenticação (Bearer token) e transporte HTTP REST.  
-* p0/classifier.py: Estruturação de prompts, regras de negócio e validação semântica das respostas.  
-* p0/main.py: Captura de entrada pelo terminal, orquestração e apresentação visual amigável.  
-* p0/tests/test\_errors.py: Suíte de testes automatizados unitários e de integração.
+## 3\. Arquitetura Modular e Parâmetros Dinâmicos
 
-## 3\. Tratamento de Erros e Resiliência
+A aplicação está organizada com estrita separação de responsabilidades:
 
-A aplicação trata de forma amigável e segura (sem expor segredos ou stacktraces):
+* `p0/config.py`: Carrega e valida parâmetros de conexão e **parâmetros de inferência** (temperatura, max\_tokens, repeat\_penalty) diretamente do `.env`, sem alterar o código-fonte.  
+* `p0/logger.py`: Grava eventos, timestamps e latências no arquivo `p0/app.log`, com sanitização preventiva de credenciais.  
+* `p0/client.py`: Monta requisições REST, controla cabeçalhos Bearer e trata falhas HTTP (401, 409, 429, 502, timeouts e conexões).  
+* `p0/classifier.py`: Estruturação de prompts com raciocínio preliminar (Chain-of-Thought) para mitigar vieses de modelos leves.  
+* `p0/main.py`: Interface de linha de comando (CLI) amigável que orquestra o fluxo sem expor stacktraces ao usuário.  
+* `p0/tests/test_errors.py`: Suíte de testes unitários locais (offline), testes simulados com mocks e teste de chamada real.
 
-* Entradas vazias: Rejeição imediata antes de acionar a rede.  
-* Autenticação (HTTP 401/403): Alerta orientando conferir LLM\_API\_KEY.  
-* Indisponibilidade / Falha de Conexão: Mensagem clara indicando se o serviço está desligado.  
-* Timeout: Tratamento do limite de tempo de espera.  
-* Resposta Malformada: Validação estrutural do JSON retornado.
+## 4\. Como Instalar e Executar (Reprodutibilidade em Ambiente Limpo)
 
-## 4\. Testes Reais vs. Testes Simulados (Mocks)
+### Passo 1: Preparar o ambiente virtual
 
-* Testes Reais: Executados ponta a ponta contra o modelo local Qwen 2.5 0.5B Instruct no Node03.  
-* Testes Simulados (Mocks): Para demonstrar cenários de falha técnica (como credencial inválida 401, timeout e queda de servidor) sem depender de quebrar a infraestrutura real, utilizamos unittest.mock.
+python3 \-m venv .venv source .venv/bin/activate
 
-Comando para executar a suíte de testes: python3 \-m unittest discover \-s p0/tests \-p "test\_\*.py" \-v
+### Passo 2: Instalar dependências
 
-## 5\. Exemplos de Entrada e Saída Observados
+pip install \-r p0/requirements.txt
 
-* Exemplo 1:  
-  - Entrada: "Minha impressora travou"  
-  - Saída: Prioridade: Média \| Justificativa: Falha de impressão sem impacto sistêmico imediato.  
-* Exemplo 2:  
-  - Entrada: "Servidor de banco de dados principal parou de responder e a aplicação caiu"  
-  - Saída: Prioridade: Alta \| Justificativa: Queda de componente crítico com indisponibilidade total do serviço.
+### Passo 3: Configurar variáveis de ambiente
 
-## 6\. Solução de Problemas (Troubleshooting)
+cp p0/.env.example p0/.env
 
-* Erro ModuleNotFoundError: No module named 'dotenv' ou 'requests'  
-  - Causa: Script executado fora do ambiente virtual isolado.  
-  - Como resolver: Ative o ambiente virtual antes de executar (source .venv/bin/activate).  
-  - Execução direta alternativa: ./.venv/bin/python3 p0/main.py
+# Ajuste as variáveis no arquivo p0/.env conforme seu endpoint (local ou nuvem):
 
-## 7\. Estado Atual da Entrega
+# LLM\_BASE\_URL=[http\://127.0.0.1:8088/v1](http://127.0.0.1:8088/v1)
 
-- [x] Nível Básico (p0-basico): Núcleo funcional da chamada ao LLM.  
-- [x] Nível Intermediário (p0-intermediario): Modularização, tratamento granular de erros, suíte de testes e integração via Pull Request.  
-- [ ] Nível Avançado (p0-avancado): Validação em ambiente limpo, reprodutibilidade e relatório final.
+# LLM\_MODEL=qwen2.5-0.5b
+
+# LLM\_TIMEOUT=30
+
+# LLM\_TEMPERATURE=0.1
+
+# LLM\_MAX\_TOKENS=100
+
+# LLM\_REPEAT\_PENALTY=1.15
+
+### Passo 4: Executar a aplicação
+
+python3 p0/main.py
+
+## 5\. Execução da Suíte de Testes
+
+A suíte inclui testes offline (que rodam sem rede nem modelo ativo), testes de falhas simuladas via mock (401, 409, 429, timeout, queda) e teste real:
+
+python3 \-m unittest discover \-s p0/tests \-p "test\_\*.py" \-v
+
+## 6\. Auditoria e Logs de Execução
+
+Todas as execuções gravam registros no arquivo `p0/app.log` contendo data, hora, latência e status HTTP, sem gravar dados sensíveis ou credenciais.
+
+## 7\. Marcos Históricos de Entrega (Tags PBL)
+
+- [x] **p0-basico:** Primeiro fluxo funcional conectando ao LLM local via terminal.  
+- [x] **p0-intermediario:** Modularização em camadas, tratamento granular de erros HTTP e integração por Pull Request.  
+- [x] **p0-avancado:** Parâmetros de inferência dinâmicos via .env, sistema de logs sanitizado, testes de lógica offline e reprodutibilidade validada.

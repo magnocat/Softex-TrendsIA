@@ -20,3 +20,5 @@ p0/.env
 
 # Scripts utilitários locais
 push.sh
+p0/app.log
+*.log
