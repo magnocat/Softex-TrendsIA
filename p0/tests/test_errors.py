@@ -105,8 +105,8 @@ class TestP0TratamentoDeErros(unittest.TestCase):
             resultado = self.classifier.classificar("O servidor web parou de responder.")
             self.assertIn("Prioridade:", resultado)
             self.assertIn("Justificativa:", resultado)
-        except LLMUnavailableError:
-            self.skipTest("LLM local não está ativo no momento para teste real.")
+        except (LLMUnavailableError, LLMTimeoutError):
+            self.skipTest("LLM local não respondeu a tempo ou está sobrecarregado no momento.")
 
 
 if __name__ == "__main__":
